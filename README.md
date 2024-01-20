@@ -2,7 +2,7 @@
 
 This is a simple script written in Python that autofishes for you. That's all 
 it does --- nothing else. Set up your character in prime fishing location, then 
-run `autofish.py` in a terminal window and follow the instructions.
+run `python autofish.py` in a terminal window and follow the instructions.
 
 The script defaults to using Right [CTRL] as the on/off key. When the script is 
 disabled, you can just leave it running in the background while you go and do 
