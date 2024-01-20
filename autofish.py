@@ -11,10 +11,10 @@
 import mss
 import mss.tools
 import pynput.keyboard, pynput.mouse
-import numpy
 import time
 
 
+# Global variables
 autoclicker_enabled = False
 null_string = 0x000000
 
