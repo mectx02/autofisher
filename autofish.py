@@ -12,6 +12,7 @@ import mss
 import mss.tools
 import pynput.keyboard, pynput.mouse
 import time
+import os
 
 
 # Global variables
@@ -45,8 +46,11 @@ def on_release(key):
     global autoclicker_enabled
 
     if key == pynput.keyboard.Key.alt_gr:
-        print("Autofisher disabled this run. Press [CTRL]+c to exit...")
         autoclicker_enabled = False
+        print("Exiting...")
+        keyboard_listener.stop()
+        os._exit(0)         # This is the only way to permamently drop back to a 
+                            # python console at the moment, so this stays
         return False
 
 
@@ -64,25 +68,19 @@ def evaluate(reference, current):
     # print(current_tuple)
 
     false_positive = True
-    exact_same = False
     for i in range(0, 3):
-        difference = int(str(reference_tuple[i]), 16) - int(str(current_tuple[i]), 16)
-        if difference > 1:
+        difference = abs(int(str(reference_tuple[i]), 16) - int(str(current_tuple[i]), 16))
+        if difference > 3:
             false_positive = False
             break
         
         if difference == 0:
-            exact_same = True;
             break
 
     if not false_positive:
-        print("Actual catch detected!")
         return True
 
     else:
-        if not exact_same:
-            print("False positive detected; likely either nighttime or rain")
-            
         return False
     
     # Hedge bets here just in case we get something that doesn't go through 
