@@ -1,7 +1,7 @@
 # AutoFisher
 # An autoclicker designed to help you autofish
 # (c) 2024 - Mitchell Case
-# v. 0.0.1
+# v. 0.1.0
 # 
 # Requirements:
 # This works due to the subtitling accessibility feature. In order for it to
@@ -18,27 +18,27 @@ import os
 # Global variables
 autoclicker_enabled = False
 null_string = 0x000000
+catch_reference = 0x000000
 
 
 def on_press(key):
     global autoclicker_enabled
     global null_string
+    global catch_reference
 
     if key == pynput.keyboard.Key.ctrl_r:
 
         if (autoclicker_enabled == True):
+            # Reset the control values, just in case the player has moved since 
+            # the last time they went fishing
             autoclicker_enabled = False
             null_string = 0x000000
+            catch_reference = 0x000000
             print("Autofisher disabled.")
 
         else:
             autoclicker_enabled = True
-            calibration_picture = mss.mss().grab(monitor)
-            null_string = calibration_picture.rgb.hex()
-            print("Calibrated null string to [{0}]".format(null_string))
-            print("Autofisher enabled.")
-            mss.tools.to_png(calibration_picture.rgb, calibration_picture.size, output="cal.png")
-            print("cal.png")
+            calibrate()
             time.sleep(2)
 
 
@@ -49,23 +49,26 @@ def on_release(key):
         autoclicker_enabled = False
         print("Exiting...")
         keyboard_listener.stop()
-        os._exit(0)         # This is the only way to permamently drop back to a 
+        os._exit(0)         # This is the only way to permanently drop back to a 
                             # python console at the moment, so this stays
         return False
 
 
+# Helper function designed to manipulate hexadecimal string values in Python, 
+# since this isn't a low-level language by default (damn you untyped languages!)
+# Returns as a tuple in format (R, G, B)
 def split_hex(value):
     value = int(str(value), 16)
     return hex(value >> 16), hex((value & 0xFF00) >> 8), hex(value & 0xFF)
 
 
+# Evaluates whether the current value should be considered a false positive 
+# (significant change in value compared to the calibration pixel)
 def evaluate(reference, current):
+    global catch_reference
 
     reference_tuple = split_hex(reference)
     current_tuple = split_hex(current)
-
-    # print(reference_tuple)
-    # print(current_tuple)
 
     false_positive = True
     for i in range(0, 3):
@@ -74,11 +77,22 @@ def evaluate(reference, current):
             false_positive = False
             break
         
-        if difference == 0:
-            break
-
     if not false_positive:
-        return True
+        # On the first go around after calibration, set the catch-reference value
+        if catch_reference == 0x000000:
+            catch_reference = current
+
+        # Otherwise, see if what we currently have is actually a catch
+        else:
+            known_catch_tuple = split_hex(catch_reference)
+            for i in range(0, 3):
+                difference = abs(int(str(known_catch_tuple[i]), 16) - int(str(current_tuple[i]), 16))
+                # Unlike the first test, however, the difference should be somewhat the same
+                if difference > 5:
+                    false_positive = True
+                    break
+
+        return not false_positive 
 
     else:
         return False
@@ -86,6 +100,16 @@ def evaluate(reference, current):
     # Hedge bets here just in case we get something that doesn't go through 
     # the for loop
     return False
+
+
+def calibrate():
+    global null_string
+    calibration_picture = mss.mss().grab(monitor)
+    null_string = calibration_picture.rgb.hex()
+    print("Calibrated null string to [{0}]".format(null_string))
+    print("Autofisher enabled.")
+    mss.tools.to_png(calibration_picture.rgb, calibration_picture.size, output="cal.png")
+    print("cal.png")
 
 
 
@@ -133,6 +157,8 @@ while True:
             raw_capture = screen_capture.grab(monitor)
             rgb_values = raw_capture.rgb.hex()
 
+            # First make sure that we actually see something different compared 
+            # to the calibration picture
             if evaluate(null_string, rgb_values):
                 print("I caught something! [{0}]".format(rgb_values))
                 # Reel it in!
